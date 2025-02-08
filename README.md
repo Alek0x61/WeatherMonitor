@@ -12,4 +12,4 @@ The collected data is logged into an SQLite database.
 
 ### Circuit diagram
 
-![Alt text](circuit_image.png)
+![Alt text](circuit_design.png)
