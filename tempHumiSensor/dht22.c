@@ -100,7 +100,7 @@ char read_dht_data(float *humidity, float *temperature) {
     // Then, if j = 2, the byte would look like this: 10000100.
     for (int i = 0; i < 5; i++) {
         for (int j = 7; j >= 0; j--) {
-            unsigned long HIGH_VAL_duration = 0; // Variable to store how long the pin stays HIGH_VAL
+            unsigned long high_duration = 0; // Variable to store how long the pin stays HIGH_VAL
             unsigned long start_time = 0;    // Start time for HIGH_VAL duration
 
             while (digitalRead(pin) == LOW_VAL) {}
@@ -109,12 +109,12 @@ char read_dht_data(float *humidity, float *temperature) {
 
             while (digitalRead(pin) == HIGH_VAL) {
                 
-                HIGH_VAL_duration = micros() - start_time;  // Calculate the duration the pin has been HIGH_VAL
-                if (HIGH_VAL_duration > 200)
+                high_duration = micros() - start_time;  // Calculate the duration the pin has been HIGH_VAL
+                if (high_duration > 200)
                     return ERROR;
             }
 
-            if (HIGH_VAL_duration > 40) { // If the HIGH_VAL pulse duration is more than 40µs, it's a '1'
+            if (high_duration > 40) { // If the HIGH_VAL pulse duration is more than 40µs, it's a '1'
                 data[i] |= (1 << j);
             }
         }
@@ -128,8 +128,8 @@ char read_dht_data(float *humidity, float *temperature) {
     }
 
     // Checksum (last byte)
-    int checksum = data[4];
-    int calculated_checksum = data[0] + data[1] + data[2] + data[3];
+    unsigned char checksum = data[4];
+    unsigned char calculated_checksum = data[0] + data[1] + data[2] + data[3];
 
     if (checksum != calculated_checksum) {
         return ERROR;
