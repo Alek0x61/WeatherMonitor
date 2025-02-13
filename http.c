@@ -21,7 +21,7 @@ typedef char* (*EndpointFunc)(void*);
 typedef void* (*ExtractQueryParams)(char*, short);
 
 int server_sock;
-int client_sock;
+int client_socket;
 
 typedef struct {
     char route[MAX_ROUTE_LEN];
@@ -69,16 +69,16 @@ short matchEndpoint(char* definedRoute, char* query, int queryLength) {
 void closeHttpConnection() {
     printf("\nSignal received, closing server socket...\n");
     if (server_sock != -1) {
-        close(client_sock);
+        close(client_socket);
         close(server_sock);
         printf("Server socket closed.\n");
     }
 }
 
-void handle_request(int client_sock) {
+void handle_request(int client_socket) {
     char buffer[BUFFER_SIZE];
 
-    int read_size = recv(client_sock, buffer, sizeof(buffer) - 1, 0);
+    int read_size = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
     if (read_size < 0) {
         perror("recv failed");
         return;
@@ -104,13 +104,20 @@ void handle_request(int client_sock) {
             void* queryParam = endpoint.extractQueryParams(route, length);
             char* response = endpoint.endpointFunc(queryParam);
 
-            if (response) {
-                send(client_sock, response, strlen(response), 0);
-                free(response);
-            } else {
-                char* buffer = "[]";
-                send(client_sock, buffer, 2, 0);
-            }
+            char *body = response ? response : "[]";
+
+            char response_headers[1024];
+
+            snprintf(response_headers, sizeof(response_headers),
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Content-Length: %zu\r\n"
+                    "Connection: close\r\n"
+                    "\r\n", strlen(body));
+            printf("strlen(response_headers) %d\n", strlen(response_headers));
+            printf("strlen(body) %d\n", strlen(body));
+            send(client_socket, response_headers, strlen(response_headers), 0);
+            send(client_socket, body, strlen(body), 0);
             
             pageFound = 1;
             break;
@@ -124,10 +131,10 @@ void handle_request(int client_sock) {
             "Connection: close\r\n"
             "\r\n"
             "404 Not Found\n";
-        send(client_sock, response, strlen(response), 0);
+        send(client_socket, response, strlen(response), 0);
     }
 
-    close(client_sock);
+    close(client_socket);
 }
 
 short runServer(Endpoint* endpointsParam) {
@@ -164,13 +171,13 @@ short runServer(Endpoint* endpointsParam) {
             return ERROR;
         }
 
-        client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_addr_len);
-        if (client_sock < 0) {
+        client_socket = accept(server_sock, (struct sockaddr *)&client_addr, &client_addr_len);
+        if (client_socket < 0) {
             retry++;
             perror("Accept failed");
             continue;
         }
-        handle_request(client_sock);
+        handle_request(client_socket);
     }
 
     close(server_sock);
